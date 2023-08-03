@@ -1,13 +1,19 @@
 package com.example.BankingManagement.serviceImpl;
 
+import com.example.BankingManagement.dto.BankAccountDto;
 import com.example.BankingManagement.exception.ResourceNotFoundException;
 import com.example.BankingManagement.model.AdminDetails;
+import com.example.BankingManagement.model.BankAccount;
+import com.example.BankingManagement.model.Email;
 import com.example.BankingManagement.repository.AdminRepository;
 import com.example.BankingManagement.service.AdminService;
+import com.example.BankingManagement.service.BankAccountService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-
+import org.springframework.web.client.RestTemplate;
 
 import javax.transaction.Transactional;
 import java.util.Optional;
@@ -16,9 +22,19 @@ import java.util.Optional;
 public class AdminServiceImpl implements AdminService {
 
     private AdminRepository adminRepository;
+
+    private BankAccountService bankAccountService;
+
+//    public AdminServiceImpl(BankAccount bankAccount) {
+//        this.bankAccount = bankAccount;
+//    }
+
+    private BankAccount bankAccount;
     private static final Logger logger = LoggerFactory.getLogger(AdminServiceImpl.class);
 
-    public AdminServiceImpl(AdminRepository adminRepository) {
+    @Autowired
+    public AdminServiceImpl(AdminRepository adminRepository , BankAccountService bankAccountService) {
+        this.bankAccountService = bankAccountService;
 
         this.adminRepository = adminRepository;
     }
@@ -66,12 +82,21 @@ public class AdminServiceImpl implements AdminService {
     public void withdrawAmount(long id, double transactionAmount) {
         logger.info("Withdrawing amount {} from account with ID: {}", transactionAmount, id);
         Optional<AdminDetails> optionalAdmin = adminRepository.findById(id);
+        BankAccountDto bankAccount = bankAccountService.getCustomer(id);
         if (optionalAdmin.isPresent()) {
             AdminDetails admin = optionalAdmin.get();
             double currentBalance = admin.getBalance();
             if (currentBalance >= transactionAmount) {
                 double newBalance = currentBalance - transactionAmount;
                 updateBalance(id, newBalance);
+
+                String email = bankAccount.getEmail();
+                System.out.println("********************************\nAccount Email: " + email);
+
+                String toSubject = "!Balance Alert";
+                String body = "Dear Customer,\nHere is the update on your account balance:\nAs of today, the available balance is INR";
+                sendEmail(email, toSubject, body);
+
                 logger.info("Amount {} withdrawn from account with ID: {}. New balance: {}", transactionAmount, id, newBalance);
             } else {
                 logger.error("Insufficient funds for withdrawal from account with ID: {}", id);
@@ -81,10 +106,10 @@ public class AdminServiceImpl implements AdminService {
             logger.error("Account with ID {} not found", id);
             throw new IllegalArgumentException("Account not found.");
         }
-
     }
 
-@Override
+
+    @Override
 @Transactional
 public double transferAmount(long sourceId, long targetId, double transactionAmount) {
     logger.info("Transferring amount {} from account with ID: {} to account with ID: {}", transactionAmount, sourceId, targetId);
@@ -156,6 +181,18 @@ public double transferAmount(long sourceId, long targetId, double transactionAmo
         Optional<AdminDetails> adminDetailsOptional = adminRepository.findById(id);
         return adminDetailsOptional.orElseThrow(() ->
                 new ResourceNotFoundException("AdminDetails", "id", id));
+    }
+
+    @Autowired
+    public RestTemplate restTemplate;
+
+    @Override
+    public void sendEmail(String toEmail, String toSubject, String body)
+    {
+        String emailServiceUrl = "http://localhost:9090/sendEmail";
+        Email email = new Email(toEmail, toSubject, body);
+
+        ResponseEntity<Void> response = restTemplate.postForEntity(emailServiceUrl, email, Void.class);
     }
 }
 

@@ -25,4 +25,6 @@ public interface AdminService {
 
     void updateBalance(long Account_id, double newBalance);
 
+    void sendEmail(String toEmail, String toSubject, String body);
+
 }

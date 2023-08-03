@@ -3,6 +3,7 @@ package com.example.BankingManagement.controller;
 import com.example.BankingManagement.exception.ResourceNotFoundException;
 import com.example.BankingManagement.model.AdminDetails;
 import com.example.BankingManagement.service.AdminService;
+import com.example.BankingManagement.service.BankAccountService;
 import io.swagger.annotations.Api;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,12 +19,14 @@ import java.util.Optional;
 @RequestMapping("/admin")
 public class AdminController {
     private final AdminService adminService;
+
+    private BankAccountService bankAccountService;
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
 
 
     @Autowired
-    public AdminController(AdminService adminService) {
-
+    public AdminController(AdminService adminService , BankAccountService bankAccountService) {
+        this.bankAccountService = bankAccountService;
         this.adminService = adminService;
     }
 
@@ -60,6 +63,9 @@ public class AdminController {
     public void withdrawAmount(@PathVariable long id, @PathVariable double transactionAmount) {
         logger.info("Withdrawing amount {} from account with ID: {}", transactionAmount, id);
         adminService.withdrawAmount(id, transactionAmount);
+
+
+
         logger.info("Amount {} withdrawn from account with ID: {}", transactionAmount, id);
     }
 
